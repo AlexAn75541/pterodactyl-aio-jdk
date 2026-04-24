@@ -10,11 +10,11 @@ A collection of Docker images for the Pterodactyl Panel, providing multiple JDK 
 
 | Java Version | Image Tag | Included JDK Vendors |
 |--------------|-----------|---------------------|
-| **8** | `ghcr.io/alexan75541/pterodactyl-graalvm:aio-8` | Temurin, Zulu, Corretto, Semeru, Liberica, Dragonwell |
-| **11** | `ghcr.io/alexan75541/pterodactyl-graalvm:aio-11` | Temurin, Zulu, Corretto, Semeru, Liberica, Dragonwell |
-| **17** | `ghcr.io/alexan75541/pterodactyl-graalvm:aio-17` | Temurin, **GraalVM (all 3 variants)**, Zulu, Corretto, Semeru, Liberica, Dragonwell |
-| **21** | `ghcr.io/alexan75541/pterodactyl-graalvm:aio-21` | Temurin, **GraalVM (all 3 variants)**, Zulu, Corretto, Semeru, Liberica, Dragonwell, Shenandoah |
-| **25** | `ghcr.io/alexan75541/pterodactyl-graalvm:aio-25` | Temurin, **GraalVM (all 3 variants)**, Zulu, Corretto, Semeru, Liberica, Dragonwell |
+| **8** | `ghcr.io/alexan75541/pterodactyl-aio-jdk:aio-8` | Temurin, Zulu, Corretto, Semeru, Liberica, Dragonwell |
+| **11** | `ghcr.io/alexan75541/pterodactyl-aio-jdk:aio-11` | Temurin, Zulu, Corretto, Semeru, Liberica, Dragonwell |
+| **17** | `ghcr.io/alexan75541/pterodactyl-aio-jdk:aio-17` | Temurin, **GraalVM (all 3 variants)**, Zulu, Corretto, Semeru, Liberica, Dragonwell |
+| **21** | `ghcr.io/alexan75541/pterodactyl-aio-jdk:aio-21` | Temurin, **GraalVM (all 3 variants)**, Zulu, Corretto, Semeru, Liberica, Dragonwell, Shenandoah |
+| **25** | `ghcr.io/alexan75541/pterodactyl-aio-jdk:aio-25` | Temurin, **GraalVM (all 3 variants)**, Zulu, Corretto, Semeru, Liberica, Dragonwell |
 
 
 ## Main Features
