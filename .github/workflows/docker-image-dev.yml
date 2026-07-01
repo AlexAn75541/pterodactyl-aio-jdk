@@ -29,6 +29,7 @@ jobs:
          # - 23
          # - 23-JDK-EEequivalent
           - experimental-21
+          - experimental-25
          # - aio-8
          # - aio-11
          # - aio-17
