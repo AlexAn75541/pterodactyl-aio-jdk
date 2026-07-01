@@ -51,12 +51,12 @@ RUN git clone https://github.com/microsoft/mimalloc.git . && \
     make install
 
 # ---- JDK source stages ----
-FROM eclipse-temurin:21-jdk AS temurin
-FROM container-registry.oracle.com/graalvm/jdk:21 AS graalvm
-FROM ghcr.io/graalvm/jdk-community:21 AS graalvm-ce
-FROM container-registry.oracle.com/graalvm/native-image:21 AS graalvm-native
+FROM eclipse-temurin:25-jdk AS temurin
+FROM container-registry.oracle.com/graalvm/jdk:25 AS graalvm
+FROM ghcr.io/graalvm/jdk-community:25 AS graalvm-ce
+FROM container-registry.oracle.com/graalvm/native-image:25 AS graalvm-native
 
-FROM shipilev/openjdk:21-lilliput AS shenandoah 
+FROM shipilev/openjdk:25 AS shenandoah 
 # Subjected to removed because this img is smh large and shenandoah is not exclusive to this anymore atm
 
 FROM azul/zulu-openjdk:21 AS zulu
@@ -64,10 +64,10 @@ FROM azul/zulu-openjdk:21 AS zulu
 # FROM azul/prime-debian:21 as azul-prime
 # this one image is required to have a license in order to be used ig
 
-FROM amazoncorretto:21 AS corretto
-FROM ibm-semeru-runtimes:open-21-jdk AS semeru
-FROM bellsoft/liberica-openjdk-debian:21 AS liberica
-FROM alibabadragonwell/dragonwell:21 AS dragonwell
+FROM amazoncorretto:25 AS corretto
+FROM ibm-semeru-runtimes:open-25-jdk AS semeru
+FROM bellsoft/liberica-openjdk-debian:25 AS liberica
+FROM alibabadragonwell/dragonwell:25 AS dragonwell
 
 # ---- Builder stage: assemble and strip all JDKs in one place ----
 # This avoids layer bloat — each COPY+RUN pair in the old approach kept
@@ -76,11 +76,11 @@ FROM debian:stable-slim AS jdk-builder
 
 # Copy all JDKs into the builder
 COPY --from=temurin         /opt/java/openjdk                              /opt/java/temurin
-COPY --from=graalvm         /usr/lib64/graalvm/graalvm-java21              /opt/java/graalvm
-COPY --from=graalvm-ce      /usr/lib64/graalvm/graalvm-community-java21    /opt/java/graalvm-ce
-COPY --from=graalvm-native  /usr/lib64/graalvm/graalvm-java21              /opt/java/graalvm-native
+COPY --from=graalvm         /usr/lib64/graalvm/graalvm-java25              /opt/java/graalvm
+COPY --from=graalvm-ce      /usr/lib64/graalvm/graalvm-community-java25    /opt/java/graalvm-ce
+COPY --from=graalvm-native  /usr/lib64/graalvm/graalvm-java25              /opt/java/graalvm-native
 COPY --from=shenandoah      /opt/jdk                                       /opt/java/shenandoah
-COPY --from=corretto        /usr/lib/jvm/java-21-amazon-corretto           /opt/java/corretto
+COPY --from=corretto        /usr/lib/jvm/java-25-amazon-corretto           /opt/java/corretto
 COPY --from=semeru          /opt/java/openjdk                              /opt/java/semeru
 COPY --from=dragonwell      /opt/java/openjdk                              /opt/java/dragonwell
 
