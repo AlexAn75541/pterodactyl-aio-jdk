@@ -81,10 +81,20 @@ update_java_cacerts() {
     done
 
     if [ -f /etc/ssl/certs/ca-certificates.crt ] && [ -n "$KEYTOOL" ]; then
+        # Rebuild if the file is absent/empty OR if keytool reports zero trusted entries
+        # (catches the case where awk produced a file but keytool imported nothing)
+        _NEED_REBUILD=false
         if [ ! -s "$JAVA_CACERTS_FILE" ]; then
+            _NEED_REBUILD=true
+        elif ! "$KEYTOOL" -list -keystore "$JAVA_CACERTS_FILE" -storepass changeit 2>/dev/null | grep -q 'trustedCertEntry'; then
+            _NEED_REBUILD=true
+        fi
+
+        if [ "$_NEED_REBUILD" = "true" ]; then
             TMP_KS="/tmp/cacerts.tmp"
             rm -f "$TMP_KS"
-            awk '/-----BEGIN CERTIFICATE-----/{n++} {if(n>0) print > ("/tmp/certs/cert" n ".crt")}' /etc/ssl/certs/ca-certificates.crt 2>/dev/null || true
+            # Split bundle into one PEM file per certificate so keytool can import each
+            awk '/-----BEGIN CERTIFICATE-----/{n++; file="/tmp/certs/cert" n ".crt"} n>0{print > file}' /etc/ssl/certs/ca-certificates.crt 2>/dev/null || true
             for f in /tmp/certs/*.crt; do
                 [ -f "$f" ] || continue
                 "$KEYTOOL" -importcert -noprompt -trustcacerts \
@@ -100,21 +110,22 @@ update_java_cacerts() {
         fi
     fi
 
-    for JDK_DIR in /opt/java/*; do
-        if [ -d "$JDK_DIR" ]; then
-            for sub in "lib/security" "jre/lib/security" "conf/security"; do
-                if [ -d "$JDK_DIR/$sub" ]; then
-                    CACERTS_TARGET="$JDK_DIR/$sub/cacerts"
-                    if [ ! -s "$CACERTS_TARGET" ] || [ -L "$CACERTS_TARGET" ]; then
-                        if [ -s "$JAVA_CACERTS_FILE" ]; then
-                            rm -f "$CACERTS_TARGET" 2>/dev/null || true
-                            cp "$JAVA_CACERTS_FILE" "$CACERTS_TARGET" 2>/dev/null || true
-                        fi
+    # Always sync the shared cacerts into every JDK's security directory
+    # (unconditional copy so a stale/symlinked/empty vendor cacerts is always replaced)
+    if [ -s "$JAVA_CACERTS_FILE" ]; then
+        for JDK_DIR in /opt/java/*; do
+            if [ -d "$JDK_DIR" ]; then
+                for sub in "lib/security" "jre/lib/security" "conf/security"; do
+                    if [ -d "$JDK_DIR/$sub" ]; then
+                        CACERTS_TARGET="$JDK_DIR/$sub/cacerts"
+                        rm -f "$CACERTS_TARGET" 2>/dev/null || true
+                        cp "$JAVA_CACERTS_FILE" "$CACERTS_TARGET" 2>/dev/null || true
+                        chmod 644 "$CACERTS_TARGET" 2>/dev/null || true
                     fi
-                fi
-            done
-        fi
-    done
+                done
+            fi
+        done
+    fi
 }
 
 update_java_cacerts

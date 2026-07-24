@@ -159,7 +159,7 @@ RUN update-ca-certificates && \
     if [ -n "$KEYTOOL" ] && [ -f /etc/ssl/certs/ca-certificates.crt ]; then \
         TMP_KS="/tmp/cacerts.tmp" && \
         rm -f "$TMP_KS" && \
-        awk '/-----BEGIN CERTIFICATE-----/{n++} {if(n>0) print > ("/tmp/certs/cert" n ".crt")}' /etc/ssl/certs/ca-certificates.crt && \
+        awk '/-----BEGIN CERTIFICATE-----/{n++; file="/tmp/certs/cert" n ".crt"} n>0{print > file}' /etc/ssl/certs/ca-certificates.crt && \
         for f in /tmp/certs/*.crt; do \
             [ -f "$f" ] || continue; \
             "$KEYTOOL" -importcert -noprompt -trustcacerts \

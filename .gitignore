@@ -1,2 +1,5 @@
 .DS_Store
 .vscode/sftp.json
+
+# AI agent instructions (local only, not committed to repo)
+AGENTS.md
