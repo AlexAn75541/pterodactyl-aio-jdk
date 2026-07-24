@@ -43,7 +43,7 @@ COPY --from=jdk-builder /opt/java /opt/java
 
 # --- Sync OS CA certificates into every JDK's truststore ---
 RUN update-ca-certificates && \
-    mkdir -p /etc/ssl/certs/java /tmp/certs && \
+    mkdir -p /etc/ssl/certs/java /etc/pki/java /tmp/certs && \
     KEYTOOL=$(find /opt/java -name "keytool" -type f 2>/dev/null | head -n1) && \
     if [ -n "$KEYTOOL" ] && [ -f /etc/ssl/certs/ca-certificates.crt ]; then \
         TMP_KS="/tmp/cacerts.tmp" && \
@@ -62,15 +62,16 @@ RUN update-ca-certificates && \
             chmod 644 /etc/ssl/certs/java/cacerts; \
         fi; \
     fi && \
+        ln -sf /etc/ssl/certs/java/cacerts /etc/pki/java/cacerts && \
     for JDK_DIR in /opt/java/*; do \
         if [ -d "$JDK_DIR" ]; then \
             for sub in "lib/security" "jre/lib/security" "conf/security"; do \
                 if [ -d "$JDK_DIR/$sub" ]; then \
                     CACERTS_TARGET="$JDK_DIR/$sub/cacerts" && \
-                    if [ ! -s "$CACERTS_TARGET" ] || [ -L "$CACERTS_TARGET" ]; then \
-                        if [ -s /etc/ssl/certs/java/cacerts ]; then \
-                            rm -f "$CACERTS_TARGET" && cp /etc/ssl/certs/java/cacerts "$CACERTS_TARGET" 2>/dev/null || true; \
-                        fi; \
+                    if [ -s /etc/ssl/certs/java/cacerts ]; then \
+                        rm -f "$CACERTS_TARGET" 2>/dev/null || true && \
+                        cp /etc/ssl/certs/java/cacerts "$CACERTS_TARGET" 2>/dev/null || true && \
+                        chmod 644 "$CACERTS_TARGET" 2>/dev/null || true; \
                     fi; \
                 fi; \
             done; \

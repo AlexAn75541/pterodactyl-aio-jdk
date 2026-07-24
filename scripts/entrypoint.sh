@@ -66,7 +66,11 @@ update_java_cacerts() {
     update-ca-certificates >/dev/null 2>&1 || true
 
     JAVA_CACERTS_FILE="/etc/ssl/certs/java/cacerts"
-    mkdir -p /etc/ssl/certs/java /tmp/certs
+    mkdir -p /etc/ssl/certs/java /etc/pki/java /tmp/certs 2>/dev/null || true
+
+    if [ ! -e /etc/pki/java/cacerts ]; then
+        ln -sf /etc/ssl/certs/java/cacerts /etc/pki/java/cacerts 2>/dev/null || true
+    fi
 
     KEYTOOL=""
     for k in "${JAVA_HOME}/bin/keytool" /opt/java/*/bin/keytool keytool; do
@@ -80,7 +84,7 @@ update_java_cacerts() {
         if [ ! -s "$JAVA_CACERTS_FILE" ]; then
             TMP_KS="/tmp/cacerts.tmp"
             rm -f "$TMP_KS"
-            awk '/-----BEGIN CERTIFICATE-----/{n++} {if(n>0) print > ("/tmp/certs/cert" n ".crt")}' /etc/ssl/certs/ca-certificates.crt
+            awk '/-----BEGIN CERTIFICATE-----/{n++} {if(n>0) print > ("/tmp/certs/cert" n ".crt")}' /etc/ssl/certs/ca-certificates.crt 2>/dev/null || true
             for f in /tmp/certs/*.crt; do
                 [ -f "$f" ] || continue
                 "$KEYTOOL" -importcert -noprompt -trustcacerts \
@@ -88,10 +92,10 @@ update_java_cacerts() {
                     -alias "os-ca-$(basename "$f")" \
                     -file "$f" >/dev/null 2>&1 || true
             done
-            rm -rf /tmp/certs
+            rm -rf /tmp/certs 2>/dev/null || true
             if [ -f "$TMP_KS" ]; then
-                mv "$TMP_KS" "$JAVA_CACERTS_FILE"
-                chmod 644 "$JAVA_CACERTS_FILE"
+                mv "$TMP_KS" "$JAVA_CACERTS_FILE" 2>/dev/null || true
+                chmod 644 "$JAVA_CACERTS_FILE" 2>/dev/null || true
             fi
         fi
     fi
