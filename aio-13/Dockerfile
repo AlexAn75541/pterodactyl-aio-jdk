@@ -125,4 +125,4 @@ WORKDIR     /home/container
 
 COPY        ./../scripts/entrypoint.sh /entrypoint.sh
 
-CMD         ["/bin/bash", "/entrypoint.sh"]sh"]
+CMD         ["/bin/bash", "/entrypoint.sh"]

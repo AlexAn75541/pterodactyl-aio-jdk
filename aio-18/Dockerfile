@@ -210,4 +210,3 @@ WORKDIR     /home/container
 COPY        ./../scripts/entrypoint.sh /entrypoint.sh
 
 CMD         ["/bin/bash", "/entrypoint.sh"]
-h"]
