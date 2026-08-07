@@ -62,6 +62,7 @@ FROM bellsoft/liberica-openjdk-debian:21 AS liberica
 # FROM alibabadragonwell/dragonwell:21 AS dragonwell
 
 # ---- Builder stage: assemble and strip all JDKs in one place ----
+FROM eclipse-temurin:21-jdk AS cacerts-provider
 FROM debian:stable-slim AS jdk-builder
 
 # Copy all JDKs into the builder
@@ -71,6 +72,7 @@ COPY --from=graalvm-ce      /usr/lib64/graalvm/graalvm-community-java21    /opt/
 COPY --from=graalvm-native  /usr/lib64/graalvm/graalvm-java21              /opt/java/graalvm-native
 # COPY --from=shenandoah      /opt/jdk                                       /opt/java/shenandoah
 COPY --from=corretto        /usr/lib/jvm/java-21-amazon-corretto           /opt/java/corretto
+COPY --from=cacerts-provider /opt/java/openjdk               /tmp/cacerts-provider
 # COPY --from=semeru          /opt/java/openjdk                              /opt/java/semeru
 # COPY --from=dragonwell      /opt/java/openjdk                              /opt/java/dragonwell
 
@@ -114,22 +116,20 @@ RUN set -eux && \
     # Remove non-essential files
     find /opt/java -type f \( -name "src.zip" -o -name "*.debuginfo" -o -name "*.diz" -o -name "*.map" \) -delete 2>/dev/null || true && \
     \
-    # Fix any JDK with broken/symlinked cacerts (e.g., Corretto symlink to /etc/pki/java/cacerts)
-    # by replacing it with a valid default cacerts from another JDK (e.g., Temurin or Zulu)
-    REF_CACERTS=$(find /opt/java -name "cacerts" -type f ! -type l 2>/dev/null | head -n1) && \
-    if [ -n "$REF_CACERTS" ]; then \
-        for jdk_dir in /opt/java/*; do \
+    # Fix Corretto's broken cacerts symlink using separate cacerts-provider JDK
+    if [ -d "/opt/java/corretto" ]; then \
+        CACERTS_SRC=$(find /tmp/cacerts-provider -name "cacerts" -type f ! -type l 2>/dev/null | head -n1) && \
+        if [ -n "$CACERTS_SRC" ]; then \
             for sub in "lib/security" "jre/lib/security" "conf/security"; do \
-                if [ -d "$jdk_dir/$sub" ]; then \
-                    target="$jdk_dir/$sub/cacerts"; \
-                    if [ -L "$target" ] || [ ! -s "$target" ]; then \
-                        echo "Fixing cacerts for $jdk_dir -> copying from $REF_CACERTS"; \
-                        rm -f "$target"; \
-                        cp "$REF_CACERTS" "$target" || true; \
-                    fi; \
+                if [ -d "/opt/java/corretto/$sub" ]; then \
+                    echo "Fixing Corretto cacerts: copying from separate provider ($CACERTS_SRC)"; \
+                    rm -f "/opt/java/corretto/$sub/cacerts"; \
+                    cp "$CACERTS_SRC" "/opt/java/corretto/$sub/cacerts"; \
+                    chmod 644 "/opt/java/corretto/$sub/cacerts"; \
                 fi; \
             done; \
-        done; \
+        fi && \
+        rm -rf /tmp/cacerts-provider; \
     fi && \
     \
     # Log final sizes
@@ -159,42 +159,6 @@ RUN         apt-get update -y \
 # Copy all pre-stripped JDKs in a single layer
 COPY --from=jdk-builder /opt/java /opt/java
 
-# --- Sync OS CA certificates into every JDK's truststore ---
-RUN update-ca-certificates && \
-    mkdir -p /etc/ssl/certs/java /etc/pki/java /tmp/certs && \
-    KEYTOOL=$(find /opt/java -name "keytool" -type f 2>/dev/null | head -n1) && \
-    if [ -n "$KEYTOOL" ] && [ -f /etc/ssl/certs/ca-certificates.crt ]; then \
-        TMP_KS="/tmp/cacerts.tmp" && \
-        rm -f "$TMP_KS" && \
-        awk '/-----BEGIN CERTIFICATE-----/{n++; file="/tmp/certs/cert" n ".crt"} n>0{print > file}' /etc/ssl/certs/ca-certificates.crt && \
-        for f in /tmp/certs/*.crt; do \
-            [ -f "$f" ] || continue; \
-            "$KEYTOOL" -importcert -noprompt -trustcacerts \
-                -keystore "$TMP_KS" -storepass changeit \
-                -alias "os-ca-$(basename "$f")" \
-                -file "$f" >/dev/null 2>&1 || true; \
-        done && \
-        rm -rf /tmp/certs && \
-        if [ -f "$TMP_KS" ]; then \
-            mv "$TMP_KS" /etc/ssl/certs/java/cacerts && \
-            chmod 644 /etc/ssl/certs/java/cacerts; \
-        fi; \
-    fi && \
-    ln -sf /etc/ssl/certs/java/cacerts /etc/pki/java/cacerts && \
-    for JDK_DIR in /opt/java/*; do \
-        if [ -d "$JDK_DIR" ]; then \
-            for sub in "lib/security" "jre/lib/security" "conf/security"; do \
-                if [ -d "$JDK_DIR/$sub" ]; then \
-                    CACERTS_TARGET="$JDK_DIR/$sub/cacerts" && \
-                    if [ -s /etc/ssl/certs/java/cacerts ]; then \
-                        rm -f "$CACERTS_TARGET" 2>/dev/null || true && \
-                        cp /etc/ssl/certs/java/cacerts "$CACERTS_TARGET" 2>/dev/null || true && \
-                        chmod 644 "$CACERTS_TARGET" 2>/dev/null || true; \
-                    fi; \
-                fi; \
-            done; \
-        fi; \
-    done
 COPY --from=malloc-builder /usr/local/lib/libjemalloc.so /usr/local/lib/libjemalloc.so
 COPY --from=malloc-builder /usr/local/lib/libmimalloc.so /usr/local/lib/libmimalloc.so
 
