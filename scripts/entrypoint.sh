@@ -136,22 +136,24 @@ if [ "$DUMPS_ENABLED" = "true" ]; then
     (
         while true; do
             # loop through heapdump files
+            # Path handling and SVG output improvements adapted from Skullians/native-leak-profiling
+            # Credit: Skullians (https://github.com/Skullians/native-leak-profiling/pull/7)
             for heapfile in dumps/*.heap; do
                 if [ -f "$heapfile" ]; then
-                    basefilename="${heapfile%.heap}"
+                    basefilename=$(basename "$heapfile" .heap)
                     
                     timestamp=$(date +"%d.%m.%y-%H:%M:%S")
                     
-                    gif_output="dumps/output/${basefilename}-${timestamp}.gif"
+                    svg_output="dumps/output/${basefilename}-${timestamp}.svg"
                     
-                    mkdir -p "$(dirname "$gif_output")"
+                    mkdir -p "$(dirname "$svg_output")"
                     
-                    jeprof --show_bytes --maxdegree=20 --nodefraction=0 --edgefraction=0 --gif \
+                    jeprof --show_bytes --maxdegree=20 --nodefraction=0 --edgefraction=0 --svg \
                         "${JAVA_HOME}/bin/java" \
-                        "$heapfile" > "$gif_output"
+                        "$heapfile" > "$svg_output"
                     
                     # Remove processed heap file
-                    rm "$heapfile"
+                    rm -f "$heapfile"
                 fi
             done
             
