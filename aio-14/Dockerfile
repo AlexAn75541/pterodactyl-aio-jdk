@@ -20,6 +20,8 @@ FROM debian:stable-slim AS jdk-builder
 RUN mkdir -p /opt/java
 COPY --from=zulu      /usr/lib/jvm  /tmp/zulu-jvm
 COPY --from=liberica  /usr/lib/jvm  /tmp/liberica-jvm
+COPY ./../scripts/patch-cve-2026-91403.sh /tmp/patch-cve-2026-91403.sh
+
 RUN set -eux && \
     ZULU_DIR=$(find /tmp/zulu-jvm -mindepth 1 -maxdepth 1 -type d | head -n1) && if [ -n "$ZULU_DIR" ]; then mv "$ZULU_DIR" /opt/java/zulu; else echo "ERROR: No Zulu JDK directory found!" && exit 1; fi && \
     rm -rf /tmp/zulu-jvm && \
@@ -28,6 +30,10 @@ RUN set -eux && \
     for jdk in zulu liberica; do if [ ! -f "/opt/java/$jdk/bin/java" ]; then echo "ERROR: /opt/java/$jdk/bin/java not found!" && exit 1; fi; echo "OK /opt/java/$jdk/bin/java"; done && \
     for dir in man demo sample legal jmods include; do find /opt/java -type d -name "$dir" -exec rm -rf {} + 2>/dev/null || true; done && \
     find /opt/java -type f \( -name "src.zip" -o -name "*.debuginfo" -o -name "*.diz" -o -name "*.map" \) -delete 2>/dev/null || true && \
+    # Patch all JDKs for CVE-2026-91403 (eMudhra intermediate CA compromise)
+    bash /tmp/patch-cve-2026-91403.sh /opt/java && \
+    rm -f /tmp/patch-cve-2026-91403.sh && \
+    \
     echo "=== Per-JDK sizes ===" && du -sh /opt/java/* && echo "=== Total ===" && du -sh /opt/java
 
 FROM debian:stable-slim
@@ -47,5 +53,6 @@ ENV JDK_VENDOR=zulu
 USER        container
 ENV         USER=container HOME=/home/container
 WORKDIR     /home/container
+COPY        ./../scripts/patch-cve-2026-91403.sh /usr/local/bin/patch-cve-2026-91403.sh
 COPY        ./../scripts/entrypoint.sh /entrypoint.sh
 CMD         ["/bin/bash", "/entrypoint.sh"]

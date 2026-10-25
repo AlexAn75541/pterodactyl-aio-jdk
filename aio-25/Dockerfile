@@ -81,6 +81,8 @@ COPY --from=zulu      /usr/lib/jvm  /tmp/zulu-jvm
 COPY --from=liberica  /usr/lib/jvm  /tmp/liberica-jvm
 
 # Single RUN: move variable-named dirs, then strip ALL JDKs
+COPY ./../scripts/patch-cve-2026-91403.sh /tmp/patch-cve-2026-91403.sh
+
 RUN set -eux && \
     # Move Zulu
     ZULU_DIR=$(find /tmp/zulu-jvm -mindepth 1 -maxdepth 1 -type d | head -n1) && \
@@ -136,6 +138,10 @@ RUN set -eux && \
     fi && \
     \
     # Log final sizes
+    # Patch all JDKs for CVE-2026-91403 (eMudhra intermediate CA compromise)
+    bash /tmp/patch-cve-2026-91403.sh /opt/java && \
+    rm -f /tmp/patch-cve-2026-91403.sh && \
+    \
     echo "=== Per-JDK sizes ===" && du -sh /opt/java/* && \
     echo "=== Total ===" && du -sh /opt/java
 
@@ -175,6 +181,7 @@ ENV         USER=container HOME=/home/container
 
 WORKDIR     /home/container
 
+COPY        ./../scripts/patch-cve-2026-91403.sh /usr/local/bin/patch-cve-2026-91403.sh
 COPY        ./../scripts/entrypoint.sh /entrypoint.sh
 
 CMD         ["/bin/bash", "/entrypoint.sh"]

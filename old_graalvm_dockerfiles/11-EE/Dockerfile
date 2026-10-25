@@ -35,6 +35,10 @@ ENV JAVA_HOME=/opt/java/graalvm \
     PATH="/opt/java/graalvm/bin:$PATH"
 
 # Step 2 - add pterodactyl stuff
+# Patch for CVE-2026-91403 (eMudhra intermediate CA compromise)
+COPY        ./../../scripts/patch-cve-2026-91403.sh /tmp/patch-cve-2026-91403.sh
+RUN         bash /tmp/patch-cve-2026-91403.sh /opt/java/graalvm && rm -f /tmp/patch-cve-2026-91403.sh
+
 RUN useradd -d /home/container -m container
 
 USER        container
